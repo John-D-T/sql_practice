@@ -1,0 +1,40 @@
+-- join wands property to wands
+    -- we want a left join
+-- we then get id, age, coins_needed, power of wands
+-- we don't want evil wands
+-- we also want the cheapest wand for each combination of age and power
+-- ordered by power descending, then age descending
+
+SELECT w.id, wp.age, w.coins_needed as coins_needed, w.power
+FROM Wands w
+LEFT JOIN Wands_Property wp ON w.code = wp.code
+WHERE wp.is_evil = '0'
+AND w.coins_needed =
+(
+    SELECT MIN(w1.coins_needed)
+                    FROM Wands w1
+                    LEFT JOIN Wands_Property w2
+                    ON w1.code = w2.code
+                    WHERE w1.power = w.power and w2.age = wp.age
+)
+ORDER BY w.power DESC, wp.age DESC;
+
+
+-- CTE style
+
+-- we want all the columns, with an addition column indicating the lowest price for each grouping of age and power - window function & row_number
+-- filter out wands that are evil - where is_evil = '0'
+
+-- then select from this cte where the row_number is 1
+
+WITH cte AS (
+    SELECT w.id, w.code, wp.age, w.power, w.coins_needed, ROW_NUMBER() OVER (PARTITION BY w.power, wp.age ORDER BY w.coins_needed) AS price_rank
+    FROM Wands w
+    LEFT JOIN Wands_Property wp ON w.code = wp.code
+    WHERE wp.is_evil = '0'
+)
+
+SELECT c.id, c.age, c.coins_needed, c.power
+FROM cte c
+WHERE c.price_rank = 1
+ORDER BY c.power DESC, c.age DESC;
